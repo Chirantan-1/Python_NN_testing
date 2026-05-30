@@ -1,3 +1,5 @@
+import numpy as np
+
 class NeuralNetwork:
 
     def __init__(self, save_file=None, loss="cross_entropy"):
