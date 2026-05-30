@@ -7,7 +7,7 @@ from TheNN import NeuralNetwork
 X = X.reshape(-1, 784) / 255.0
 x = x.reshape(-1, 784) / 255.0
 
-nn = NeuralNetwork(save_file="C:/Users/chira_mk2ov0g/OneDrive/Documents/python/NN/model.pkl", loss="cross_entropy")
+nn = NeuralNetwork(save_file="model.pkl", loss="cross_entropy")
 
 nn.add_layer(784, 128, "relu")
 nn.add_layer(128, 64, "tanh")
