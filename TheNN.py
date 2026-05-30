@@ -11,11 +11,7 @@ class NeuralNetwork:
 
     def add_layer(self, inp, out, activation):
 
-        W = np.random.uniform(
-            low=-np.sqrt(6 / inp),
-            high=np.sqrt(6 / inp),
-            size=(inp, out)
-        )
+        W = np.random.uniform(low=-np.sqrt(6 / inp), high=np.sqrt(6 / inp), size=(inp, out))
 
         B = np.zeros((1, out))
 
@@ -66,10 +62,7 @@ class NeuralNetwork:
             return -np.mean(np.sum(Y * np.log(A + eps), axis=1))
 
         if self.loss_name == "binary_cross_entropy":
-            return -np.mean(
-                Y * np.log(A + eps) +
-                (1 - Y) * np.log(1 - A + eps)
-            )
+            return -np.mean(Y * np.log(A + eps) +(1 - Y) * np.log(1 - A + eps))
 
         raise ValueError("Unknown loss")
 
@@ -87,10 +80,7 @@ class NeuralNetwork:
             return -(Y / (A + eps))
 
         if self.loss_name == "binary_cross_entropy":
-            return (
-                -(Y / (A + eps))
-                + ((1 - Y) / (1 - A + eps))
-            )
+            return (-(Y / (A + eps)) + ((1 - Y) / (1 - A + eps)))
 
         raise ValueError("Unknown loss")
 
@@ -179,14 +169,9 @@ class NeuralNetwork:
 
                     if j != 0:
 
-                        dZ = dA_prev * self.activate_derivative(
-                            zs[j - 1],
-                            self.layers[j - 1]["activation"]
-                        )
+                        dZ = dA_prev * self.activate_derivative(zs[j - 1], self.layers[j - 1]["activation"])
 
-            print(
-                f"Epoch {epoch + 1}/{epochs} | Loss: {epoch_loss / batches:.6f}"
-            )
+            print(f"Epoch {epoch + 1}/{epochs} | Loss: {epoch_loss / batches:.6f}")
 
             self.save()
 
