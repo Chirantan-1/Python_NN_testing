@@ -1,9 +1,9 @@
 This was project was originally inpired by Samson Zhang's video on a neural network in python: https://www.youtube.com/watch?v=w8yWXqWQYmU
 
-digits.ipynb is my attept at the same problem (github doesn't show the notebook right now but it can be viewed here: https://colab.research.google.com/github/Chirantan-1/Python_NN_testing/blob/main/digits.ipynb )
-
-TheNN.py is a general template to make a neural network, I have included an exaple use in the examples folder.
-NNDrawer.py was originally a debugging tool, but I figured it might be useful to test model so I have condensed it into a template, with the example Guess.py
+Files:
+  1. digits.ipynb is my attept at the same problem (github doesn't show the notebook right now but it can be viewed here: https://colab.research.google.com/github/Chirantan-1/Python_NN_testing/blob/main/digits.ipynb )
+  2. TheNN.py is a general template to make a neural network, I have included an exaple use in the examples folder.
+  3. NNDrawer.py was originally a debugging tool, but I figured it might be useful to test model so I have condensed it into a template, with the example Guess.py
 
 My sources to understanding the workings of NNs:
   1. a video series by 3blue1brown: https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi
