@@ -155,23 +155,14 @@ class NeuralNetwork:
 
                 last_activation = self.layers[-1]["activation"]
 
-                if (
-                    self.loss_name == "cross_entropy"
-                    and last_activation == "softmax"
-                ):
+                if (self.loss_name == "cross_entropy" and last_activation == "softmax"):
                     dZ = A - currentY
 
-                elif (
-                    self.loss_name == "binary_cross_entropy"
-                    and last_activation == "sigmoid"
-                ):
+                elif (self.loss_name == "binary_cross_entropy" and last_activation == "sigmoid"):
                     dZ = A - currentY
 
                 else:
-                    dZ = dA * self.activate_derivative(
-                        zs[-1],
-                        last_activation
-                    )
+                    dZ = dA * self.activate_derivative(zs[-1], last_activation)
 
                 for j in reversed(range(len(self.layers))):
 
