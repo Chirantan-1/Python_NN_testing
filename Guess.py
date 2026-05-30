@@ -2,9 +2,7 @@ import pygame
 import numpy as np
 from TheNN import NeuralNetwork
 
-nn = NeuralNetwork(
-    save_file="C:/Users/chira_mk2ov0g/OneDrive/Documents/python/NN/model.pkl"
-)
+nn = NeuralNetwork(save_file="model.pkl")
 
 nn.load()
 
