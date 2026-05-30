@@ -1,51 +1,11 @@
 import pygame
 import numpy as np
-import pickle
+from TheNN import NeuralNetwork
 
-class NeuralNetwork:
+nn = NeuralNetwork(
+    save_file="C:/Users/chira_mk2ov0g/OneDrive/Documents/python/NN/model.pkl"
+)
 
-    def __init__(self, save_file=None):
-
-        self.layers = []
-        self.save_file = save_file
-
-    def load(self):
-
-        with open(self.save_file, "rb") as f:
-            self.layers = pickle.load(f)
-
-    def activate(self, Z, activation):
-
-        if activation == "relu":
-            return np.maximum(0, Z)
-
-        if activation == "sigmoid":
-            return 1 / (1 + np.exp(-Z))
-
-        if activation == "tanh":
-            return np.tanh(Z)
-
-        if activation == "softmax":
-            exp = np.exp(Z - np.max(Z, axis=1, keepdims=True))
-            return exp / np.sum(exp, axis=1, keepdims=True)
-
-    def forward(self, X):
-
-        A = X
-
-        for layer in self.layers:
-
-            Z = (A @ layer["W"]) + layer["B"]
-            A = self.activate(Z, layer["activation"])
-
-        return A
-
-    def predict(self, X):
-
-        output = self.forward(X)
-        return np.argmax(output)
-
-nn = NeuralNetwork(save_file="C:/Users/chira_mk2ov0g/OneDrive/Documents/python/NN/model.pkl")
 nn.load()
 
 grid_size = 28
@@ -188,7 +148,9 @@ while running:
 
                 inp = pixels.reshape(1, 784)
 
-                prediction = nn.predict(inp)
+                activations, _ = nn.forward(inp)
+
+                prediction = np.argmax(activations[-1])
 
                 result = f"Prediction: {prediction}"
 
