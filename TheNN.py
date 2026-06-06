@@ -1,101 +1,93 @@
 import numpy as np
-import pickle 
+import pickle
 
 class NeuralNetwork:
 
+    VA = {"relu", "sigmoid", "tanh", "softmax", "linear"}
+
     def __init__(self, save_file=None, loss="cross_entropy"):
-
-        self.layers = []
+        self.ls = []
         self.save_file = save_file
-        self.loss_name = loss
+        self.l = loss
+        self.classf = loss in {"cross_entropy", "binary_cross_entropy"}
 
-    def add_layer(self, inp, out, activation):
+    def add_layer(self, inp, out, a):
 
-        W = np.random.uniform(low=-np.sqrt(6 / inp), high=np.sqrt(6 / inp), size=(inp, out))
+        if a not in self.VA:
+            raise ValueError(f"invalid activation: {a}")
+
+        if a == "relu":
+            W = np.random.randn(inp, out) * np.sqrt(2 / inp)
+        else:
+            limit = np.sqrt(6 / (inp + out))
+            W = np.random.uniform(-limit, limit, (inp, out))
 
         B = np.zeros((1, out))
 
-        self.layers.append({
-            "W": W,
-            "B": B,
-            "activation": activation
-        })
+        self.ls.append({"W": W, "B": B, "act": a})
 
-    def activate(self, Z, activation):
+    def act(self, Z, a):
 
-        if activation == "relu":
+        if a == "relu":
             return np.maximum(0, Z)
 
-        if activation == "sigmoid":
-            return 1 / (1 + np.exp(-Z))
+        if a == "sigmoid":
+            return 1 / (1 + np.exp(-np.clip(Z, -500, 500)))
 
-        if activation == "tanh":
+        if a == "tanh":
             return np.tanh(Z)
 
-        if activation == "softmax":
+        if a == "softmax":
             exp = np.exp(Z - np.max(Z, axis=1, keepdims=True))
             return exp / np.sum(exp, axis=1, keepdims=True)
 
-    def activate_derivative(self, Z, activation):
+        if a == "linear":
+            return Z
 
-        if activation == "relu":
+    def actd(self, Z, a):
+
+        if a == "relu":
             return (Z > 0).astype(float)
 
-        if activation == "sigmoid":
-            s = 1 / (1 + np.exp(-Z))
+        if a == "sigmoid":
+            s = self.act(Z, "sigmoid")
             return s * (1 - s)
 
-        if activation == "tanh":
+        if a == "tanh":
             return 1 - np.tanh(Z) ** 2
+
+        if a == "linear":
+            return np.ones_like(Z)
+
+        raise ValueError("Softmax without cross_entropy")
 
     def loss(self, A, Y):
 
         eps = 1e-8
 
-        if self.loss_name == "mse":
+        if self.l == "mse":
             return np.mean((A - Y) ** 2) / 2
 
-        if self.loss_name == "mae":
+        if self.l == "mae":
             return np.mean(np.abs(A - Y))
 
-        if self.loss_name == "cross_entropy":
+        if self.l == "cross_entropy":
             return -np.mean(np.sum(Y * np.log(A + eps), axis=1))
 
-        if self.loss_name == "binary_cross_entropy":
-            return -np.mean(Y * np.log(A + eps) +(1 - Y) * np.log(1 - A + eps))
+        if self.l == "binary_cross_entropy":
+            return -np.mean(Y * np.log(A + eps) + (1 - Y) * np.log(1 - A + eps))
 
-        raise ValueError("Unknown loss")
-
-    def loss_derivative(self, A, Y):
-
-        eps = 1e-8
-
-        if self.loss_name == "mse":
-            return A - Y
-
-        if self.loss_name == "mae":
-            return np.sign(A - Y)
-
-        if self.loss_name == "cross_entropy":
-            return -(Y / (A + eps))
-
-        if self.loss_name == "binary_cross_entropy":
-            return (-(Y / (A + eps)) + ((1 - Y) / (1 - A + eps)))
-
-        raise ValueError("Unknown loss")
+        raise ValueError("invalid loss")
 
     def forward(self, X):
 
         A = X
-
         activations = [X]
         zs = []
 
-        for layer in self.layers:
-
-            Z = (A @ layer["W"]) + layer["B"]
-            A = self.activate(Z, layer["activation"])
-
+        for layer in self.ls:
+            Z = A @ layer["W"] + layer["B"]
+            A = self.act(Z, layer["act"])
             zs.append(Z)
             activations.append(A)
 
@@ -103,86 +95,136 @@ class NeuralNetwork:
 
     def save(self):
 
-        if self.save_file is not None:
+        if self.save_file is None:
+            return
 
-            with open(self.save_file, "wb") as f:
-                pickle.dump(self.layers, f)
+        with open(self.save_file, "wb") as f:
+            pickle.dump({
+                "ls": self.ls,
+                "l": self.l,
+                "classf": self.classf
+            }, f)
 
     def load(self):
 
-        if self.save_file is not None:
+        with open(self.save_file, "rb") as f:
+            data = pickle.load(f)
 
-            with open(self.save_file, "rb") as f:
-                self.layers = pickle.load(f)
+        self.ls = data["ls"]
+        self.l = data["l"]
+        self.classf = data["classf"]
 
-    def train(self, X, Y, x, y, batch, epochs, lr):
+    def train(self, X, Y, x=None, y=None, batch=32, epochs=10, lr=0.001):
 
-        classes = np.max(Y) + 1
+        if not self.ls:
+            raise ValueError("0 layers")
+
+        l_a = self.ls[-1]["act"]
+
+        if self.l == "cross_entropy" and l_a != "softmax":
+            raise ValueError("cross_entropy without softmax")
+
+        if self.l == "binary_cross_entropy" and l_a != "sigmoid":
+            raise ValueError("binary_cross_entropy without sigmoid")
+
+        for ly in self.ls[:-1]:
+            if ly["act"] == "softmax":
+                raise ValueError("softmax in non-output layer")
+
+        n = len(X)
 
         for epoch in range(epochs):
 
-            epoch_loss = 0
+            perm = np.random.permutation(n)
+            Xs = X[perm]
+            Ys = Y[perm]
+
+            epoch_loss = 0.0
             batches = 0
 
-            for i in range(X.shape[0] // batch):
+            for start in range(0, n, batch):
 
-                currentX = X[i * batch:(i + 1) * batch]
-                givenY = Y[i * batch:(i + 1) * batch]
+                end = min(start + batch, n)
 
-                currentY = np.zeros((len(givenY), classes))
-                currentY[np.arange(len(givenY)), givenY] = 1
+                currentX = Xs[start:end]
+                currentY = Ys[start:end]
+
+                m = len(currentX)
 
                 activations, zs = self.forward(currentX)
 
                 A = activations[-1]
 
-                loss = self.loss(A, currentY)
-
-                epoch_loss += loss
+                epoch_loss += self.loss(A, currentY)
                 batches += 1
 
-                dA = self.loss_derivative(A, currentY)
-
-                last_activation = self.layers[-1]["activation"]
-
-                if (self.loss_name == "cross_entropy" and last_activation == "softmax"):
+                if (self.l == "cross_entropy" or self.l == "binary_cross_entropy"):
                     dZ = A - currentY
 
-                elif (self.loss_name == "binary_cross_entropy" and last_activation == "sigmoid"):
-                    dZ = A - currentY
+                elif self.l == "mse":
+                    dZ = ((A - currentY) * self.actd(zs[-1], l_a))
+
+                elif self.l == "mae":
+                    dZ = (np.sign(A - currentY) * self.actd(zs[-1], l_a))
 
                 else:
-                    dZ = dA * self.activate_derivative(zs[-1], last_activation)
+                    raise ValueError("invalid loss")
 
-                for j in reversed(range(len(self.layers))):
+                for j in reversed(range(len(self.ls))):
+
+                    W_old = self.ls[j]["W"].copy()
 
                     A_prev = activations[j]
 
-                    dW = (A_prev.T @ dZ) / batch
-                    dB = np.sum(dZ, axis=0, keepdims=True) / batch
+                    dW = (A_prev.T @ dZ) / m
+                    dB = np.sum(dZ, axis=0, keepdims=True) / m
 
                     if j != 0:
-                        dA_prev = dZ @ self.layers[j]["W"].T
+                        dA_prev = dZ @ W_old.T
 
-                    self.layers[j]["W"] -= lr * dW
-                    self.layers[j]["B"] -= lr * dB
+                    self.ls[j]["W"] -= lr * dW
+                    self.ls[j]["B"] -= lr * dB
 
                     if j != 0:
 
-                        dZ = dA_prev * self.activate_derivative(zs[j - 1], self.layers[j - 1]["activation"])
+                        prev_activation = self.ls[j - 1]["act"]
 
-            print(f"Epoch {epoch + 1}/{epochs} | Loss: {epoch_loss / batches:.6f}")
+                        dZ = (dA_prev * self.actd(zs[j - 1], prev_activation))
+
+            print(f"Epoch {epoch + 1}/{epochs} | " + f"Loss: {epoch_loss / batches:.6f}")
 
             self.save()
 
-        correct = 0
+        if x is not None and y is not None:
 
-        for inp, label in zip(x, y):
-            inp = inp.reshape(1, -1)
-            activations, _ = self.forward(inp)
-            prediction = np.argmax(activations[-1])
+            if self.classf:
 
-            if prediction == label:
-                correct += 1
+                output = self.forward(x)[0][-1]
 
-        print("Accuracy:", correct / len(y))
+                if self.l == "binary_cross_entropy":
+
+                    preds = (output >= 0.5).astype(int).reshape(-1)
+
+                    if y.ndim > 1:
+                        labels = y.reshape(-1)
+                    else:
+                        labels = y
+
+                else:
+
+                    preds = np.argmax(output, axis=1)
+
+                    if y.ndim > 1:
+                        labels = np.argmax(y, axis=1)
+                    else:
+                        labels = y
+
+                print("Accuracy:", np.mean(preds == labels))
+
+            else:
+
+                pred = self.forward(x)[0][-1]
+
+                mse = np.mean((pred - y) ** 2)
+
+                print("Test MSE:", mse)
