@@ -1,9 +1,7 @@
 from TheNN import NeuralNetwork
 from NNDrawer import NNDrawer
 
-nn = NeuralNetwork(
-    save_file="model.pkl"
-)
+nn = NeuralNetwork(save_file="model.pkl")
 
 nn.load()
 
